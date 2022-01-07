@@ -75,14 +75,14 @@ object Markdown:
   
   private val parser = Parser.builder(options).nn.build().nn
 
-  def parse(string: Text): Markdown[Markdown.Ast.Block] throws MarkdownError =
+  def parse(string: Text): Markdown[Markdown.Ast.Block] =
     val root = parser.parse(string.s).nn
     val nodes = root.getChildIterator.nn.asScala.to(List).map(convert(root, _).getOrElse(
         throw MarkdownError(t"could not parse markdown")))
     
     Markdown(nodes.collect { case child: Markdown.Ast.Block => child }*)
 
-  def parseInline(string: Text): Markdown[Markdown.Ast.Inline] throws MarkdownError =
+  def parseInline(string: Text): Markdown[Markdown.Ast.Inline] =
     parse(string) match
       case Markdown(Paragraph(xs*)) => Markdown[Markdown.Ast.Inline](xs*)
       case other                    => throw MarkdownError(t"markdown contains block-level elements")
@@ -103,7 +103,7 @@ object Markdown:
       .replaceAll("'", "’").nn
 
   private def resolveReference(root: cvfua.Document, node: cvfa.ImageRef | cvfa.LinkRef)
-      : Text throws MarkdownError =
+      : Text =
     Option(node.getReferenceNode(root)).fold {
       throw MarkdownError(t"the image reference could not be resolved")
     } { node => Showable(node.nn.getUrl).show }
@@ -112,23 +112,23 @@ object Markdown:
       cvfa.Image | cvfa.ImageRef | cvfa.Link | cvfa.LinkRef | cvfa.MailLink | cvfa.Text
 
   def phraseChildren(root: cvfua.Document, node: cvfua.Node)
-      : Seq[Markdown.Ast.Inline] throws MarkdownError =
+      : Seq[Markdown.Ast.Inline] =
     coalesce(node.getChildren.nn.iterator.nn.asScala.to(List).collect {
       case node: PhrasingInput => phrasing(root, node)
     })
   
-  def flowChildren(root: cvfua.Document, node: cvfua.Node): Seq[Markdown.Ast.Block] throws MarkdownError =
+  def flowChildren(root: cvfua.Document, node: cvfua.Node): Seq[Markdown.Ast.Block] =
     node.getChildren.nn.iterator.nn.asScala.to(List).collect {
       case node: FlowInput => flow(root, node)
     }
   
   def listItems(root: cvfua.Document, node: cvfa.BulletList | cvfa.OrderedList)
-      : Seq[ListItem] throws MarkdownError =
+      : Seq[ListItem] =
     node.getChildren.nn.iterator.nn.asScala.to(List).collect {
       case node: (cvfa.BulletListItem | cvfa.OrderedListItem) => ListItem(flowChildren(root, node)*)
     }
 
-  def phrasing(root: cvfua.Document, node: PhrasingInput): Markdown.Ast.Inline throws MarkdownError =
+  def phrasing(root: cvfua.Document, node: PhrasingInput): Markdown.Ast.Inline =
     node match
       case node: cvfa.Emphasis       => Emphasis(phraseChildren(root, node)*)
       case node: cvfa.StrongEmphasis => Strong(phraseChildren(root, node)*)
@@ -147,7 +147,7 @@ object Markdown:
   type FlowInput = cvfa.BlockQuote | cvfa.BulletList | cvfa.CodeBlock | cvfa.FencedCodeBlock |
       cvfa.ThematicBreak | cvfa.Paragraph | cvfa.IndentedCodeBlock | cvfa.Heading | cvfa.OrderedList
 
-  def flow(root: cvfua.Document, node: FlowInput): Markdown.Ast.Block throws MarkdownError =
+  def flow(root: cvfua.Document, node: FlowInput): Markdown.Ast.Block =
     node match
       case node: cvfa.BlockQuote        => Blockquote(flowChildren(root, node)*)
       
@@ -195,7 +195,7 @@ object Markdown:
     catch case e: MarkdownError    => None
   
   def table(root: cvfua.Document, node: tables.TableBlock)
-      : List[Markdown.Ast.TablePart] throws MarkdownError =
+      : List[Markdown.Ast.TablePart] =
     node.getChildren.nn.iterator.nn.asScala.to(List).collect {
       case node: (tables.TableHead | tables.TableBody) =>
         val rows: Seq[Row] = node.getChildren.nn.iterator.nn.asScala.to(List).collect {
@@ -211,5 +211,5 @@ object Markdown:
       
     }
     
-  def tableCell(root: cvfua.Document, node: tables.TableCell): Cell throws MarkdownError =
+  def tableCell(root: cvfua.Document, node: tables.TableCell): Cell =
     Cell(phraseChildren(root, node)*)
